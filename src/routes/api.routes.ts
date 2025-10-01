@@ -23,7 +23,8 @@ router.post("/generate-questions", async (req, res) => {
             });
         }
 
-        const questions = await getAIService().generateQuestions(jobRole, company);
+        const experience = req.body.experience || "mid-level";
+        const questions = await getAIService().generateQuestions(jobRole, company, experience);
 
         res.json({
             success: true,

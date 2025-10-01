@@ -84,3 +84,4 @@ Thumbs.db
 
 # Stores VSCode versions used for testing VSCode extensions
 .vscode-test
+/src/generated/prisma
