@@ -62,7 +62,13 @@ export class DatabaseService {
     }
 
     // Interview Operations
-    async createInterview(userId: number, jobRole: string, company: string, experience: string, questions: any[]): Promise<Interview> {
+    async createInterview(
+        userId: number,
+        jobRole: string,
+        company: string,
+        experience: string,
+        questions: any[]
+    ): Promise<Interview> {
         const [interview] = await db
             .insert(interviews)
             .values({
@@ -105,12 +111,12 @@ export class DatabaseService {
         if (isNaN(numericUserId)) {
             throw new Error(`Invalid userId: ${userId} cannot be converted to number`);
         }
-        
+
         // Create an interview record instead
         return await this.createInterview(
-            numericUserId, 
+            numericUserId,
             data.jobRole || "Software Engineer",
-            data.company || "TechCorp", 
+            data.company || "TechCorp",
             data.experience || "Mid-level",
             data.questions || []
         );

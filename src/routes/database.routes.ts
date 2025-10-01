@@ -54,7 +54,7 @@ router.post("/generate-questions", async (req, res) => {
                 // First, get the user by email to get their numeric ID
                 const user = await getDBService().getUserByEmail(userId); // userId is actually email
                 let questionSet = null;
-                
+
                 if (user) {
                     questionSet = await getDBService().createQuestionSet(user.id.toString(), {
                         jobRole,
@@ -70,7 +70,7 @@ router.post("/generate-questions", async (req, res) => {
                     company,
                     questionSetId: questionSet?.id || null,
                     saved: !!questionSet,
-                    message: questionSet 
+                    message: questionSet
                         ? "Questions generated and saved successfully"
                         : "Questions generated successfully (user not found in database)",
                 });
@@ -200,9 +200,9 @@ router.post("/interviews/start", requireAuth, async (req: any, res) => {
         }
 
         const interview = await getDBService().createInterview(
-            user.id, 
-            "Mock Interview", 
-            "Practice Company", 
+            user.id,
+            "Mock Interview",
+            "Practice Company",
             "Practice",
             [] // Empty questions array for now
         );
