@@ -144,4 +144,28 @@ router.get("/interview-history/:userId", async (req, res) => {
     }
 });
 
+// Get details for a specific interview
+router.get("/interview-details/:interviewId", async (req, res) => {
+    try {
+        const interviewId = parseInt(req.params.interviewId, 10);
+        if (isNaN(interviewId)) {
+            return res.status(400).json({ error: "Invalid interview ID" });
+        }
+
+        const details = await getDBService().getInterviewDetails(interviewId);
+
+        if (!details) {
+            return res.status(404).json({ error: "Interview not found" });
+        }
+
+        res.json({ success: true, details });
+    } catch (error) {
+        console.error("Error fetching interview details:", error);
+        res.status(500).json({
+            error: "Failed to fetch interview details",
+            message: error instanceof Error ? error.message : "Unknown error",
+        });
+    }
+});
+
 export default router;

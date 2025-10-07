@@ -96,6 +96,27 @@ export class DatabaseService {
             .orderBy(desc(interviews.createdAt));
     }
 
+    async getInterviewDetails(
+        interviewId: number
+    ): Promise<{ interview: Interview; answers: Answer[] } | null> {
+        const [interview] = await db
+            .select()
+            .from(interviews)
+            .where(eq(interviews.id, interviewId))
+            .limit(1);
+
+        if (!interview) {
+            return null;
+        }
+
+        const interviewAnswers = await this.getAnswersForInterview(interviewId);
+
+        return {
+            interview,
+            answers: interviewAnswers,
+        };
+    }
+
     async getUserStats(userId: number) {
         const interviewStats = await db
             .select({
