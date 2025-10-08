@@ -67,7 +67,7 @@ router.post("/generate-questions", async (req, res) => {
 // Generate feedback for an answer and save it
 router.post("/generate-feedback", async (req, res) => {
     try {
-        const { question, answer, userId, interviewId, questionId } = req.body;
+        const { question, answer, userId, interviewId, questionId, timeSpent } = req.body;
 
         if (!question || !answer || !userId || !interviewId || !questionId) {
             return res.status(400).json({
@@ -78,7 +78,15 @@ router.post("/generate-feedback", async (req, res) => {
         // 1. Get feedback from AI
         const feedback = await feedbackService.generateFeedback(question, answer);
 
-        // 2. Save the answer and feedback to the database
+        // 2. Calculate overall score
+        const overallScore =
+            (feedback.relevanceScore +
+                feedback.clarityScore +
+                feedback.depthScore +
+                feedback.starMethodScore) /
+            4;
+
+        // 3. Save the answer and feedback to the database
         const savedAnswer = await getDBService().saveAnswer({
             userId,
             interviewId,
@@ -88,9 +96,11 @@ router.post("/generate-feedback", async (req, res) => {
             relevanceScore: feedback.relevanceScore,
             clarityScore: feedback.clarityScore,
             depthScore: feedback.depthScore,
-            starMethodScore: feedback.starMethodScore,
-            overallFeedback: feedback.overallFeedback,
-            suggestion: feedback.suggestion,
+            overallScore: overallScore,
+            strengths: feedback.overallFeedback ? [feedback.overallFeedback] : [],
+            improvements: feedback.suggestion ? [feedback.suggestion] : [],
+            starMethodScore: { overall: feedback.starMethodScore },
+            timeSpent,
         });
 
         res.json({
@@ -163,6 +173,35 @@ router.get("/interview-details/:interviewId", async (req, res) => {
         console.error("Error fetching interview details:", error);
         res.status(500).json({
             error: "Failed to fetch interview details",
+            message: error instanceof Error ? error.message : "Unknown error",
+        });
+    }
+});
+
+// Generate a follow-up question
+router.post("/generate-follow-up", async (req, res) => {
+    try {
+        const { originalQuestion, answer } = req.body;
+
+        if (!originalQuestion || !answer) {
+            return res.status(400).json({
+                error: "Original question and answer are required",
+            });
+        }
+
+        const followUpQuestion = await getAIService().generateFollowUpQuestion(
+            originalQuestion,
+            answer
+        );
+
+        res.json({
+            success: true,
+            followUpQuestion,
+        });
+    } catch (error) {
+        console.error("Error generating follow-up question:", error);
+        res.status(500).json({
+            error: "Failed to generate follow-up question",
             message: error instanceof Error ? error.message : "Unknown error",
         });
     }

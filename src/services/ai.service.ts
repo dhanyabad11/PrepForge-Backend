@@ -80,6 +80,24 @@ export class AIService {
         }
     }
 
+    async generateFollowUpQuestion(originalQuestion: string, answer: string): Promise<string> {
+        try {
+            const prompt = `Based on the original question and the user's answer, generate one relevant follow-up question. The follow-up should dig deeper into the user's response.
+
+Original Question: "${originalQuestion}"
+User's Answer: "${answer}"
+
+Return only the follow-up question as a single string.`;
+
+            const result = await this.model.generateContent(prompt);
+            const response = await result.response;
+            return response.text().trim();
+        } catch (error) {
+            console.error("Follow-up question generation error:", error);
+            return "Can you elaborate on that a bit more?";
+        }
+    }
+
     private getFallbackQuestions(jobRole: string): Question[] {
         const fallbackQuestions = [
             {

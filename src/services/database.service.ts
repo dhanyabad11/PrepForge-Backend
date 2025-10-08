@@ -182,6 +182,8 @@ export class DatabaseService {
             .where(eq(userProgress.userId, userId))
             .limit(1);
 
+        const today = new Date();
+
         if (existingProgress.length > 0) {
             const current = existingProgress[0];
             const newTotalAnswers = (current.totalQuestionsAnswered || 0) + 1;
@@ -196,13 +198,45 @@ export class DatabaseService {
                     newTotalAnswers,
             };
 
+            // Streak Logic
+            let newCurrentStreak = current.currentStreak || 0;
+            let newLongestStreak = current.longestStreak || 0;
+            const lastPractice = current.lastPracticeDate
+                ? new Date(current.lastPracticeDate)
+                : null;
+
+            if (lastPractice) {
+                const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                const lastPracticeStart = new Date(
+                    lastPractice.getFullYear(),
+                    lastPractice.getMonth(),
+                    lastPractice.getDate()
+                );
+                const diffTime = todayStart.getTime() - lastPracticeStart.getTime();
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                if (diffDays === 1) {
+                    newCurrentStreak++;
+                } else if (diffDays > 1) {
+                    newCurrentStreak = 1;
+                }
+            } else {
+                newCurrentStreak = 1;
+            }
+
+            if (newCurrentStreak > newLongestStreak) {
+                newLongestStreak = newCurrentStreak;
+            }
+
             const [updatedProgress] = await db
                 .update(userProgress)
                 .set({
                     totalQuestionsAnswered: newTotalAnswers,
                     averageScore: newAverages.averageScore,
-                    lastPracticeDate: new Date(),
-                    updatedAt: new Date(),
+                    lastPracticeDate: today,
+                    currentStreak: newCurrentStreak,
+                    longestStreak: newLongestStreak,
+                    updatedAt: today,
                 })
                 .where(eq(userProgress.userId, userId))
                 .returning();
@@ -218,6 +252,9 @@ export class DatabaseService {
                             (scores.clarityScore || 0) +
                             (scores.depthScore || 0)) /
                         3,
+                    currentStreak: 1,
+                    longestStreak: 1,
+                    lastPracticeDate: today,
                 })
                 .returning();
             return newProgress;
