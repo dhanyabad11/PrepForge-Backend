@@ -25,7 +25,7 @@ const getDBService = () => {
 // Generate interview questions
 router.post("/generate-questions", async (req, res) => {
     try {
-        const { jobRole, company, experience, userId } = req.body;
+        const { jobRole, company, experience, userId, difficulty } = req.body;
 
         if (!jobRole || !company || !userId) {
             return res.status(400).json({
@@ -33,10 +33,16 @@ router.post("/generate-questions", async (req, res) => {
             });
         }
 
+        const validDifficulty =
+            difficulty === "easy" || difficulty === "medium" || difficulty === "hard"
+                ? difficulty
+                : "medium";
+
         const questions = await getAIService().generateQuestions(
             jobRole,
             company,
-            experience || "mid-level"
+            experience || "mid-level",
+            validDifficulty
         );
 
         // Create a new interview session in the database
@@ -202,6 +208,25 @@ router.post("/generate-follow-up", async (req, res) => {
         console.error("Error generating follow-up question:", error);
         res.status(500).json({
             error: "Failed to generate follow-up question",
+            message: error instanceof Error ? error.message : "Unknown error",
+        });
+    }
+});
+
+// Get detailed analytics for a user
+router.get("/analytics/:userId", async (req, res) => {
+    try {
+        const userId = parseInt(req.params.userId, 10);
+        if (isNaN(userId)) {
+            return res.status(400).json({ error: "Invalid user ID" });
+        }
+
+        const analytics = await getDBService().getDetailedAnalytics(userId);
+        res.json({ success: true, analytics });
+    } catch (error) {
+        console.error("Error fetching analytics:", error);
+        res.status(500).json({
+            error: "Failed to fetch analytics",
             message: error instanceof Error ? error.message : "Unknown error",
         });
     }

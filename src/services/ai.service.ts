@@ -25,19 +25,29 @@ export class AIService {
     async generateQuestions(
         jobRole: string,
         company: string,
-        experience: string
+        experience: string,
+        difficulty: "easy" | "medium" | "hard" = "medium"
     ): Promise<Question[]> {
         try {
-            const prompt = `Generate 5 interview questions for a ${jobRole} position at ${company} for someone with ${experience} experience level. 
+            const difficultyGuidelines = {
+                easy: "Focus on basic concepts, general questions, and foundational knowledge. Suitable for entry-level or warm-up questions.",
+                medium: "Include moderately challenging questions that require some depth of knowledge and practical experience.",
+                hard: "Generate advanced questions that require deep expertise, complex problem-solving, and senior-level thinking.",
+            };
+
+            const prompt = `Generate 5 ${difficulty} difficulty interview questions for a ${jobRole} position at ${company} for someone with ${experience} experience level. 
+      
+      Difficulty Level: ${difficulty.toUpperCase()}
+      ${difficultyGuidelines[difficulty]}
       
       Return the response as a JSON array with each question having:
-      - id: unique identifier
-      - question: the interview question
+      - id: unique identifier (string)
+      - question: the interview question (string)
       - type: 'behavioral', 'technical', or 'situational'
-      - difficulty: 'easy', 'medium', or 'hard'
+      - difficulty: '${difficulty}' (all questions should be ${difficulty})
       - category: relevant category like 'problem-solving', 'leadership', etc.
       
-      Make questions relevant to the role and company.`;
+      Make questions relevant to the role, company, and difficulty level.`;
 
             const result = await this.model.generateContent(prompt);
             const response = await result.response;
@@ -49,11 +59,11 @@ export class AIService {
                 return Array.isArray(questions) ? questions : [];
             } catch {
                 // Fallback if AI doesn't return valid JSON
-                return this.getFallbackQuestions(jobRole);
+                return this.getFallbackQuestions(jobRole, difficulty);
             }
         } catch (error) {
             console.error("AI service error:", error);
-            return this.getFallbackQuestions(jobRole);
+            return this.getFallbackQuestions(jobRole, difficulty);
         }
     }
 
@@ -98,13 +108,51 @@ Return only the follow-up question as a single string.`;
         }
     }
 
-    private getFallbackQuestions(jobRole: string): Question[] {
-        const fallbackQuestions = [
+    private getFallbackQuestions(jobRole: string, difficulty: string = "medium"): Question[] {
+        const easyQuestions = [
+            {
+                id: "1",
+                question: `Tell me about yourself and your interest in ${jobRole}.`,
+                type: "behavioral" as const,
+                difficulty: "easy" as const,
+                category: "introduction",
+            },
+            {
+                id: "2",
+                question: "What are your main strengths?",
+                type: "behavioral" as const,
+                difficulty: "easy" as const,
+                category: "self-assessment",
+            },
+            {
+                id: "3",
+                question: "Why do you want to work in this role?",
+                type: "behavioral" as const,
+                difficulty: "easy" as const,
+                category: "motivation",
+            },
+            {
+                id: "4",
+                question: "Describe a typical day in your current or previous role.",
+                type: "behavioral" as const,
+                difficulty: "easy" as const,
+                category: "experience",
+            },
+            {
+                id: "5",
+                question: "What interests you about our company?",
+                type: "behavioral" as const,
+                difficulty: "easy" as const,
+                category: "company-fit",
+            },
+        ];
+
+        const mediumQuestions = [
             {
                 id: "1",
                 question: `Tell me about your experience with ${jobRole} and what interests you about this role.`,
                 type: "behavioral" as const,
-                difficulty: "easy" as const,
+                difficulty: "medium" as const,
                 category: "background",
             },
             {
@@ -124,10 +172,10 @@ Return only the follow-up question as a single string.`;
             },
             {
                 id: "4",
-                question: "What are your biggest strengths and how would they benefit our team?",
+                question: "Tell me about a time when you had to work with a difficult team member.",
                 type: "behavioral" as const,
-                difficulty: "easy" as const,
-                category: "self-assessment",
+                difficulty: "medium" as const,
+                category: "teamwork",
             },
             {
                 id: "5",
@@ -139,6 +187,54 @@ Return only the follow-up question as a single string.`;
             },
         ];
 
-        return fallbackQuestions;
+        const hardQuestions = [
+            {
+                id: "1",
+                question: `Describe the most complex technical problem you've solved in ${jobRole} and walk me through your approach.`,
+                type: "technical" as const,
+                difficulty: "hard" as const,
+                category: "problem-solving",
+            },
+            {
+                id: "2",
+                question:
+                    "Tell me about a time when you had to make a critical decision with incomplete information. What was your thought process?",
+                type: "situational" as const,
+                difficulty: "hard" as const,
+                category: "decision-making",
+            },
+            {
+                id: "3",
+                question:
+                    "How would you design and implement a system for [complex scenario]? Consider scalability, reliability, and cost.",
+                type: "technical" as const,
+                difficulty: "hard" as const,
+                category: "system-design",
+            },
+            {
+                id: "4",
+                question:
+                    "Describe a situation where your initial approach failed. How did you identify the issue and what did you do differently?",
+                type: "behavioral" as const,
+                difficulty: "hard" as const,
+                category: "adaptability",
+            },
+            {
+                id: "5",
+                question:
+                    "You're leading a project that's behind schedule and over budget. Walk me through your strategy to recover.",
+                type: "situational" as const,
+                difficulty: "hard" as const,
+                category: "leadership",
+            },
+        ];
+
+        const questionSets = {
+            easy: easyQuestions,
+            medium: mediumQuestions,
+            hard: hardQuestions,
+        };
+
+        return questionSets[difficulty as keyof typeof questionSets] || mediumQuestions;
     }
 }

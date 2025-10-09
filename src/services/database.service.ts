@@ -269,4 +269,128 @@ export class DatabaseService {
             .limit(1);
         return result[0] || null;
     }
+
+    // Performance Analytics Methods
+    async getPerformanceOverTime(userId: number, days: number = 30) {
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - days);
+
+        const performanceData = await db
+            .select({
+                date: answers.createdAt,
+                avgRelevance: avg(answers.relevanceScore),
+                avgClarity: avg(answers.clarityScore),
+                avgDepth: avg(answers.depthScore),
+                avgOverall: avg(answers.overallScore),
+                count: count(answers.id),
+            })
+            .from(answers)
+            .where(eq(answers.userId, userId))
+            .groupBy(answers.createdAt)
+            .orderBy(desc(answers.createdAt))
+            .limit(days);
+
+        return performanceData.map((item) => ({
+            date: item.date,
+            averageRelevance: parseFloat(item.avgRelevance || "0"),
+            averageClarity: parseFloat(item.avgClarity || "0"),
+            averageDepth: parseFloat(item.avgDepth || "0"),
+            averageOverall: parseFloat(item.avgOverall || "0"),
+            questionsAnswered: item.count,
+        }));
+    }
+
+    async getWeakAreas(userId: number) {
+        // Get all answers and analyze performance by question type
+        const allAnswers = await db
+            .select()
+            .from(answers)
+            .innerJoin(interviews, eq(answers.interviewId, interviews.id))
+            .where(eq(answers.userId, userId));
+
+        const scoresByType: Record<string, { total: number; count: number }> = {};
+        const scoresByCategory: Record<string, { total: number; count: number }> = {};
+
+        allAnswers.forEach(({ answers: ans, interviews: interview }) => {
+            const questions = interview.questions as any[];
+            const matchingQuestion = questions.find((q) => q.id === ans.questionId);
+
+            if (matchingQuestion && ans.overallScore) {
+                // By type
+                const type = matchingQuestion.type || "unknown";
+                if (!scoresByType[type]) {
+                    scoresByType[type] = { total: 0, count: 0 };
+                }
+                scoresByType[type].total += ans.overallScore;
+                scoresByType[type].count += 1;
+
+                // By category
+                const category = matchingQuestion.category || "general";
+                if (!scoresByCategory[category]) {
+                    scoresByCategory[category] = { total: 0, count: 0 };
+                }
+                scoresByCategory[category].total += ans.overallScore;
+                scoresByCategory[category].count += 1;
+            }
+        });
+
+        const weakTypes = Object.entries(scoresByType)
+            .map(([type, data]) => ({
+                type,
+                averageScore: data.total / data.count,
+                count: data.count,
+            }))
+            .sort((a, b) => a.averageScore - b.averageScore)
+            .slice(0, 3);
+
+        const weakCategories = Object.entries(scoresByCategory)
+            .map(([category, data]) => ({
+                category,
+                averageScore: data.total / data.count,
+                count: data.count,
+            }))
+            .sort((a, b) => a.averageScore - b.averageScore)
+            .slice(0, 3);
+
+        return {
+            weakTypes,
+            weakCategories,
+        };
+    }
+
+    async getSkillProgression(userId: number) {
+        const progress = await this.getUserProgress(userId);
+
+        if (!progress) {
+            return {
+                behavioral: 50,
+                technical: 50,
+                situational: 50,
+                communication: 50,
+            };
+        }
+
+        return {
+            behavioral: progress.behavioralSkill || 50,
+            technical: progress.technicalSkill || 50,
+            situational: progress.situationalSkill || 50,
+            communication: progress.communicationSkill || 50,
+        };
+    }
+
+    async getDetailedAnalytics(userId: number) {
+        const [performanceOverTime, weakAreas, skillProgression, userStats] = await Promise.all([
+            this.getPerformanceOverTime(userId, 30),
+            this.getWeakAreas(userId),
+            this.getSkillProgression(userId),
+            this.getUserStats(userId),
+        ]);
+
+        return {
+            performanceOverTime,
+            weakAreas,
+            skillProgression,
+            userStats,
+        };
+    }
 }
