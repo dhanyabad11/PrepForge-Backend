@@ -37,7 +37,7 @@ const requireAuth = (req: any, res: any, next: any) => {
 // Generate and save interview questions
 router.post("/generate-questions", async (req, res) => {
     try {
-        const { jobRole, company, userId } = req.body;
+        const { jobRole, company, userId, difficulty, numberOfQuestions, questionType } = req.body;
 
         if (!jobRole || !company) {
             return res.status(400).json({
@@ -45,9 +45,29 @@ router.post("/generate-questions", async (req, res) => {
             });
         }
 
-        // Generate questions using AI
+        // Generate questions using AI with all new parameters
         const experience = req.body.experience || "mid-level";
-        const questions = await getAIService().generateQuestions(jobRole, company, experience);
+        const validDifficulty =
+            difficulty === "easy" || difficulty === "medium" || difficulty === "hard"
+                ? difficulty
+                : "medium";
+        const validNumberOfQuestions =
+            numberOfQuestions && [5, 10, 15, 20].includes(numberOfQuestions)
+                ? numberOfQuestions
+                : 5;
+        const validQuestionType =
+            questionType && ["behavioral", "technical", "situational", "all"].includes(questionType)
+                ? questionType
+                : "all";
+
+        const questions = await getAIService().generateQuestions(
+            jobRole,
+            company,
+            experience,
+            validDifficulty,
+            validNumberOfQuestions,
+            validQuestionType
+        );
 
         // If user is authenticated, try to save to database
         if (userId) {

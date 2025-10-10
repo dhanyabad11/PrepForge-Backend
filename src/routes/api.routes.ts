@@ -25,7 +25,15 @@ const getDBService = () => {
 // Generate interview questions
 router.post("/generate-questions", async (req, res) => {
     try {
-        const { jobRole, company, experience, userId, difficulty } = req.body;
+        const {
+            jobRole,
+            company,
+            experience,
+            userId,
+            difficulty,
+            numberOfQuestions,
+            questionType,
+        } = req.body;
 
         if (!jobRole || !company || !userId) {
             return res.status(400).json({
@@ -38,11 +46,23 @@ router.post("/generate-questions", async (req, res) => {
                 ? difficulty
                 : "medium";
 
+        const validNumberOfQuestions =
+            numberOfQuestions && [5, 10, 15, 20].includes(numberOfQuestions)
+                ? numberOfQuestions
+                : 5;
+
+        const validQuestionType =
+            questionType && ["behavioral", "technical", "situational", "all"].includes(questionType)
+                ? questionType
+                : "all";
+
         const questions = await getAIService().generateQuestions(
             jobRole,
             company,
             experience || "mid-level",
-            validDifficulty
+            validDifficulty,
+            validNumberOfQuestions,
+            validQuestionType
         );
 
         // Create a new interview session in the database

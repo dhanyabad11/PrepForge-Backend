@@ -26,7 +26,9 @@ export class AIService {
         jobRole: string,
         company: string,
         experience: string,
-        difficulty: "easy" | "medium" | "hard" = "medium"
+        difficulty: "easy" | "medium" | "hard" = "medium",
+        numberOfQuestions: number = 5,
+        questionType?: "behavioral" | "technical" | "situational" | "all"
     ): Promise<Question[]> {
         try {
             const difficultyGuidelines = {
@@ -35,19 +37,44 @@ export class AIService {
                 hard: "Generate advanced questions that require deep expertise, complex problem-solving, and senior-level thinking.",
             };
 
-            const prompt = `Generate 5 ${difficulty} difficulty interview questions for a ${jobRole} position at ${company} for someone with ${experience} experience level. 
+            const seniorityContext = {
+                "entry-level": "junior developer or entry-level candidate",
+                junior: "junior developer with 0-2 years of experience",
+                "mid-level": "mid-level professional with 3-5 years of experience",
+                senior: "senior professional with 6+ years of experience",
+                lead: "lead or staff level with 8+ years of experience",
+            };
+
+            const typeFilter =
+                questionType && questionType !== "all"
+                    ? `Focus ONLY on ${questionType} questions. All ${numberOfQuestions} questions must be ${questionType} type.`
+                    : `Mix different types: behavioral, technical, and situational questions.`;
+
+            const seniorityLevel =
+                seniorityContext[experience as keyof typeof seniorityContext] || experience;
+
+            const prompt = `Generate ${numberOfQuestions} ${difficulty} difficulty interview questions for a ${jobRole} position at ${company} for a ${seniorityLevel}. 
       
       Difficulty Level: ${difficulty.toUpperCase()}
       ${difficultyGuidelines[difficulty]}
       
+      Question Type Requirement: ${typeFilter}
+      
       Return the response as a JSON array with each question having:
       - id: unique identifier (string)
       - question: the interview question (string)
-      - type: 'behavioral', 'technical', or 'situational'
+      - type: 'behavioral', 'technical', or 'situational' ${
+          questionType && questionType !== "all" ? `(MUST be '${questionType}')` : ""
+      }
       - difficulty: '${difficulty}' (all questions should be ${difficulty})
       - category: relevant category like 'problem-solving', 'leadership', etc.
       
-      Make questions relevant to the role, company, and difficulty level.`;
+      Make questions relevant to the role, company, seniority level, and difficulty level.
+      ${
+          questionType && questionType !== "all"
+              ? `IMPORTANT: ALL questions must be ${questionType} type questions.`
+              : ""
+      }`;
 
             const result = await this.model.generateContent(prompt);
             const response = await result.response;
@@ -56,14 +83,27 @@ export class AIService {
             // Try to parse JSON from the response
             try {
                 const questions = JSON.parse(text);
-                return Array.isArray(questions) ? questions : [];
+                const parsedQuestions = Array.isArray(questions) ? questions : [];
+
+                // Filter by type if specified and limit to requested number
+                let filteredQuestions = parsedQuestions;
+                if (questionType && questionType !== "all") {
+                    filteredQuestions = parsedQuestions.filter((q) => q.type === questionType);
+                }
+
+                return filteredQuestions.slice(0, numberOfQuestions);
             } catch {
                 // Fallback if AI doesn't return valid JSON
-                return this.getFallbackQuestions(jobRole, difficulty);
+                return this.getFallbackQuestions(
+                    jobRole,
+                    difficulty,
+                    numberOfQuestions,
+                    questionType
+                );
             }
         } catch (error) {
             console.error("AI service error:", error);
-            return this.getFallbackQuestions(jobRole, difficulty);
+            return this.getFallbackQuestions(jobRole, difficulty, numberOfQuestions, questionType);
         }
     }
 
@@ -108,7 +148,12 @@ Return only the follow-up question as a single string.`;
         }
     }
 
-    private getFallbackQuestions(jobRole: string, difficulty: string = "medium"): Question[] {
+    private getFallbackQuestions(
+        jobRole: string,
+        difficulty: string = "medium",
+        numberOfQuestions: number = 5,
+        questionType?: "behavioral" | "technical" | "situational" | "all"
+    ): Question[] {
         const easyQuestions = [
             {
                 id: "1",
@@ -144,6 +189,112 @@ Return only the follow-up question as a single string.`;
                 type: "behavioral" as const,
                 difficulty: "easy" as const,
                 category: "company-fit",
+            },
+            {
+                id: "6",
+                question: `What programming languages or tools do you use for ${jobRole}?`,
+                type: "technical" as const,
+                difficulty: "easy" as const,
+                category: "technical-skills",
+            },
+            {
+                id: "7",
+                question: "How would you handle receiving negative feedback?",
+                type: "situational" as const,
+                difficulty: "easy" as const,
+                category: "professionalism",
+            },
+            {
+                id: "8",
+                question: "What is your greatest professional achievement?",
+                type: "behavioral" as const,
+                difficulty: "easy" as const,
+                category: "achievements",
+            },
+            {
+                id: "9",
+                question: "How do you stay updated with industry trends?",
+                type: "behavioral" as const,
+                difficulty: "easy" as const,
+                category: "learning",
+            },
+            {
+                id: "10",
+                question: "Describe your ideal work environment.",
+                type: "behavioral" as const,
+                difficulty: "easy" as const,
+                category: "work-culture",
+            },
+            {
+                id: "11",
+                question: `What basic concepts of ${jobRole} are you most comfortable with?`,
+                type: "technical" as const,
+                difficulty: "easy" as const,
+                category: "fundamentals",
+            },
+            {
+                id: "12",
+                question: "How do you prioritize your tasks?",
+                type: "situational" as const,
+                difficulty: "easy" as const,
+                category: "time-management",
+            },
+            {
+                id: "13",
+                question: "Tell me about a time you worked in a team.",
+                type: "behavioral" as const,
+                difficulty: "easy" as const,
+                category: "teamwork",
+            },
+            {
+                id: "14",
+                question: "What are your career goals for the next year?",
+                type: "behavioral" as const,
+                difficulty: "easy" as const,
+                category: "goals",
+            },
+            {
+                id: "15",
+                question:
+                    "How would you explain a complex technical concept to a non-technical person?",
+                type: "situational" as const,
+                difficulty: "easy" as const,
+                category: "communication",
+            },
+            {
+                id: "16",
+                question: `What tools or frameworks are you familiar with in ${jobRole}?`,
+                type: "technical" as const,
+                difficulty: "easy" as const,
+                category: "tools",
+            },
+            {
+                id: "17",
+                question: "Describe a time when you had to learn something new quickly.",
+                type: "behavioral" as const,
+                difficulty: "easy" as const,
+                category: "adaptability",
+            },
+            {
+                id: "18",
+                question: "What motivates you in your work?",
+                type: "behavioral" as const,
+                difficulty: "easy" as const,
+                category: "motivation",
+            },
+            {
+                id: "19",
+                question: "How do you handle constructive criticism?",
+                type: "situational" as const,
+                difficulty: "easy" as const,
+                category: "feedback",
+            },
+            {
+                id: "20",
+                question: "What makes you a good fit for this role?",
+                type: "behavioral" as const,
+                difficulty: "easy" as const,
+                category: "fit",
             },
         ];
 
@@ -184,6 +335,112 @@ Return only the follow-up question as a single string.`;
                 type: "behavioral" as const,
                 difficulty: "medium" as const,
                 category: "career-planning",
+            },
+            {
+                id: "6",
+                question: `Explain the architecture of a system you've built for ${jobRole}.`,
+                type: "technical" as const,
+                difficulty: "medium" as const,
+                category: "architecture",
+            },
+            {
+                id: "7",
+                question: "How would you handle a conflict between two team members?",
+                type: "situational" as const,
+                difficulty: "medium" as const,
+                category: "conflict-resolution",
+            },
+            {
+                id: "8",
+                question:
+                    "Describe a time when you had to persuade stakeholders to adopt your solution.",
+                type: "behavioral" as const,
+                difficulty: "medium" as const,
+                category: "influence",
+            },
+            {
+                id: "9",
+                question: `What are the trade-offs between different approaches in ${jobRole}?`,
+                type: "technical" as const,
+                difficulty: "medium" as const,
+                category: "decision-making",
+            },
+            {
+                id: "10",
+                question: "Tell me about a time when you missed a deadline. What happened?",
+                type: "behavioral" as const,
+                difficulty: "medium" as const,
+                category: "failure",
+            },
+            {
+                id: "11",
+                question: "How do you ensure code quality in your projects?",
+                type: "technical" as const,
+                difficulty: "medium" as const,
+                category: "quality",
+            },
+            {
+                id: "12",
+                question: "How would you onboard a new team member?",
+                type: "situational" as const,
+                difficulty: "medium" as const,
+                category: "mentorship",
+            },
+            {
+                id: "13",
+                question: "Describe your approach to debugging complex issues.",
+                type: "technical" as const,
+                difficulty: "medium" as const,
+                category: "debugging",
+            },
+            {
+                id: "14",
+                question: "Tell me about a time you had to adapt to significant changes at work.",
+                type: "behavioral" as const,
+                difficulty: "medium" as const,
+                category: "change-management",
+            },
+            {
+                id: "15",
+                question: "How do you balance technical debt with feature development?",
+                type: "situational" as const,
+                difficulty: "medium" as const,
+                category: "prioritization",
+            },
+            {
+                id: "16",
+                question: `What testing strategies do you use for ${jobRole} projects?`,
+                type: "technical" as const,
+                difficulty: "medium" as const,
+                category: "testing",
+            },
+            {
+                id: "17",
+                question: "Describe a time when you improved a process or system.",
+                type: "behavioral" as const,
+                difficulty: "medium" as const,
+                category: "improvement",
+            },
+            {
+                id: "18",
+                question: "How would you handle a situation where you disagree with your manager?",
+                type: "situational" as const,
+                difficulty: "medium" as const,
+                category: "disagreement",
+            },
+            {
+                id: "19",
+                question: `Explain performance optimization techniques for ${jobRole}.`,
+                type: "technical" as const,
+                difficulty: "medium" as const,
+                category: "optimization",
+            },
+            {
+                id: "20",
+                question: "Tell me about a time you took initiative on a project.",
+                type: "behavioral" as const,
+                difficulty: "medium" as const,
+                category: "initiative",
             },
         ];
 
@@ -227,6 +484,122 @@ Return only the follow-up question as a single string.`;
                 difficulty: "hard" as const,
                 category: "leadership",
             },
+            {
+                id: "6",
+                question: `Design a scalable architecture for a high-traffic ${jobRole} application.`,
+                type: "technical" as const,
+                difficulty: "hard" as const,
+                category: "scalability",
+            },
+            {
+                id: "7",
+                question:
+                    "Describe a time when you had to make a decision that was unpopular but necessary.",
+                type: "behavioral" as const,
+                difficulty: "hard" as const,
+                category: "tough-decisions",
+            },
+            {
+                id: "8",
+                question:
+                    "How would you architect a system to handle millions of concurrent users?",
+                type: "technical" as const,
+                difficulty: "hard" as const,
+                category: "system-design",
+            },
+            {
+                id: "9",
+                question: "Tell me about a time you had to deliver bad news to stakeholders.",
+                type: "situational" as const,
+                difficulty: "hard" as const,
+                category: "communication",
+            },
+            {
+                id: "10",
+                question:
+                    "Describe the most significant technical architecture decision you've made and its impact.",
+                type: "technical" as const,
+                difficulty: "hard" as const,
+                category: "architecture",
+            },
+            {
+                id: "11",
+                question:
+                    "How would you handle a critical production outage affecting thousands of users?",
+                type: "situational" as const,
+                difficulty: "hard" as const,
+                category: "crisis-management",
+            },
+            {
+                id: "12",
+                question:
+                    "Explain how you would mentor a struggling team member while meeting project deadlines.",
+                type: "behavioral" as const,
+                difficulty: "hard" as const,
+                category: "mentorship",
+            },
+            {
+                id: "13",
+                question: `What are the most critical security considerations for ${jobRole} and how do you address them?`,
+                type: "technical" as const,
+                difficulty: "hard" as const,
+                category: "security",
+            },
+            {
+                id: "14",
+                question:
+                    "Describe a situation where you had to completely pivot your technical approach mid-project.",
+                type: "behavioral" as const,
+                difficulty: "hard" as const,
+                category: "adaptability",
+            },
+            {
+                id: "15",
+                question:
+                    "How would you lead a technical transformation initiative across multiple teams?",
+                type: "situational" as const,
+                difficulty: "hard" as const,
+                category: "transformation",
+            },
+            {
+                id: "16",
+                question: `Design a distributed system with high availability requirements for ${jobRole}.`,
+                type: "technical" as const,
+                difficulty: "hard" as const,
+                category: "distributed-systems",
+            },
+            {
+                id: "17",
+                question:
+                    "Tell me about a time when you had to navigate significant organizational politics.",
+                type: "behavioral" as const,
+                difficulty: "hard" as const,
+                category: "politics",
+            },
+            {
+                id: "18",
+                question:
+                    "How would you migrate a legacy system to a modern architecture with zero downtime?",
+                type: "technical" as const,
+                difficulty: "hard" as const,
+                category: "migration",
+            },
+            {
+                id: "19",
+                question:
+                    "Describe how you've built and maintained a high-performing engineering culture.",
+                type: "behavioral" as const,
+                difficulty: "hard" as const,
+                category: "culture",
+            },
+            {
+                id: "20",
+                question:
+                    "How do you make technology decisions when there are multiple valid approaches?",
+                type: "situational" as const,
+                difficulty: "hard" as const,
+                category: "decision-framework",
+            },
         ];
 
         const questionSets = {
@@ -235,6 +608,15 @@ Return only the follow-up question as a single string.`;
             hard: hardQuestions,
         };
 
-        return questionSets[difficulty as keyof typeof questionSets] || mediumQuestions;
+        let allQuestions: Question[] =
+            questionSets[difficulty as keyof typeof questionSets] || mediumQuestions;
+
+        // Filter by type if specified
+        if (questionType && questionType !== "all") {
+            allQuestions = allQuestions.filter((q) => q.type === questionType);
+        }
+
+        // Return requested number of questions
+        return allQuestions.slice(0, numberOfQuestions);
     }
 }
