@@ -51,6 +51,23 @@ app.use(
 );
 app.use(express.json());
 
+// Root endpoint - Welcome message
+app.get("/", (req, res) => {
+    res.json({
+        name: "PrepForge API",
+        version: "1.0.0",
+        status: "running",
+        message: "Welcome to PrepForge API! Visit /api/health for health check.",
+        endpoints: {
+            health: "/api/health",
+            generateQuestions: "/api/generate-questions",
+            generateFeedback: "/api/generate-feedback",
+            database: "/api/db/*",
+        },
+        documentation: "https://github.com/dhanyabad11/PrepForge-Backend",
+    });
+});
+
 // Routes
 app.use("/api", apiRoutes);
 app.use("/api/db", databaseRoutes);
