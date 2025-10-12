@@ -15,7 +15,8 @@ const allowedOrigins = [
     "http://localhost:3000",
     "http://localhost:3002",
     process.env.FRONTEND_URL,
-    /https:\/\/prepforge.*\.vercel\.app$/, // Allow all Vercel preview deployments
+    "https://prep-forge-frontend.vercel.app",
+    /https:\/\/prep-forge-frontend.*\.vercel\.app$/, // Allow all Vercel preview deployments
 ].filter(Boolean);
 
 app.use(
@@ -65,6 +66,23 @@ app.get("/", (req, res) => {
             database: "/api/db/*",
         },
         documentation: "https://github.com/dhanyabad11/PrepForge-Backend",
+    });
+});
+
+// Root route
+app.get("/", (req, res) => {
+    res.json({
+        name: "PrepForge API",
+        version: "1.0.0",
+        status: "running",
+        message: "Welcome to PrepForge API - AI-Powered Interview Preparation",
+        endpoints: {
+            health: "/api/health",
+            generateQuestions: "/api/generate-questions",
+            generateFeedback: "/api/generate-feedback",
+            database: "/api/db/*",
+        },
+        documentation: "Visit https://github.com/dhanyabad11/PrepForge-Backend",
     });
 });
 
