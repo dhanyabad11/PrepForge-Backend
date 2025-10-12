@@ -65,19 +65,26 @@ router.post("/generate-questions", async (req, res) => {
             validQuestionType
         );
 
-        // Create a new interview session in the database
-        const interview = await getDBService().createInterview(
-            userId,
-            jobRole,
-            company,
-            experience || "mid-level",
-            questions
-        );
+        // Try to create a new interview session in the database
+        let interviewId: string | number = `temp-${Date.now()}`;
+        try {
+            const interview = await getDBService().createInterview(
+                userId,
+                jobRole,
+                company,
+                experience || "mid-level",
+                questions
+            );
+            interviewId = interview.id;
+        } catch (dbError) {
+            console.error("Database error (non-fatal):", dbError);
+            // Continue without database - use temporary ID
+        }
 
         res.json({
             success: true,
             questions,
-            interviewId: interview.id,
+            interviewId,
             jobRole,
             company,
         });
