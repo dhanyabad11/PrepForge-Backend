@@ -4,8 +4,13 @@ dotenv.config();
 
 import express from "express";
 import cors from "cors";
+import helmet from "helmet";
+import morgan from "morgan";
 import apiRoutes from "./routes/api.routes";
 import databaseRoutes from "./routes/database.routes";
+import { apiLimiter } from "./middleware/rateLimiter";
+import logger, { logStream } from "./utils/logger";
+import { healthCheck, livenessProbe, readinessProbe } from "./middleware/healthCheck";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -18,6 +23,18 @@ const allowedOrigins = [
     "https://prep-forge-frontend.vercel.app",
     /https:\/\/prep-forge-frontend.*\.vercel\.app$/, // Allow all Vercel preview deployments
 ].filter(Boolean);
+
+// Security middleware
+app.use(helmet({
+    contentSecurityPolicy: false, // Disable CSP for API
+    crossOriginEmbedderPolicy: false,
+}));
+
+// Request logging
+app.use(morgan("combined", { stream: logStream }));
+
+// Rate limiting
+app.use("/api", apiLimiter);
 
 app.use(
     cors({
@@ -90,29 +107,13 @@ app.get("/", (req, res) => {
 app.use("/api", apiRoutes);
 app.use("/api/db", databaseRoutes);
 
-// Health check endpoint
-app.get("/api/health", (req, res) => {
-    const aiEnabled = !!(
-        process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== "your_api_key_here"
-    );
+// Health check endpoints
+app.get("/health", healthCheck);
+app.get("/health/live", livenessProbe);
+app.get("/health/ready", readinessProbe);
 
-    res.json({
-        status: "OK",
-        message: "PrepForge API is running",
-        timestamp: new Date().toISOString(),
-        ai: {
-            enabled: aiEnabled,
-            models: aiEnabled
-                ? {
-                      questions: "gemini-2.0-flash-exp",
-                      feedback: "gemini-2.0-flash-exp",
-                  }
-                : null,
-            fallback: !aiEnabled ? "Using high-quality fallback questions" : null,
-        },
-        environment: process.env.NODE_ENV || "development",
-    });
-}); // 404 handler
+// Legacy health check endpoint
+app.get("/api/health", healthCheck); // 404 handler
 app.use((req, res, next) => {
     res.status(404).json({
         error: "Route not found",
@@ -122,8 +123,14 @@ app.use((req, res, next) => {
 
 // Error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-    console.error("Error:", err);
-    res.status(500).json({
+    logger.error("Error:", {
+        message: err.message,
+        stack: err.stack,
+        url: req.url,
+        method: req.method,
+    });
+    
+    res.status(err.status || 500).json({
         error: "Internal server error",
         message: process.env.NODE_ENV === "development" ? err.message : "Something went wrong",
     });
@@ -131,19 +138,19 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 
 // Start server
 app.listen(PORT, () => {
-    console.log(`🚀 PrepForge API server running on port ${PORT}`);
-    console.log(`📝 Health check: http://localhost:${PORT}/api/health`);
-    console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL}`);
+    logger.info(`🚀 PrepForge API server running on port ${PORT}`);
+    logger.info(`📝 Health check: http://localhost:${PORT}/health`);
+    logger.info(`🌐 Frontend URL: ${process.env.FRONTEND_URL}`);
 
     if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== "your_api_key_here") {
-        console.log(`🤖 AI Integration: ✅ Enabled with Google Gemini`);
-        console.log(`   🧠 Model: gemini-2.0-flash-exp`);
-        console.log(`   📚 Question Generation: ✅ Active`);
-        console.log(`   💬 Feedback Generation: ✅ Active`);
+        logger.info(`🤖 AI Integration: ✅ Enabled with Google Gemini`);
+        logger.info(`   🧠 Model: gemini-2.0-flash-exp`);
+        logger.info(`   📚 Question Generation: ✅ Active`);
+        logger.info(`   💬 Feedback Generation: ✅ Active`);
     } else {
-        console.log(`🤖 AI Integration: ⚠️  Disabled (using fallback questions)`);
-        console.log(`   💡 To enable AI: Set GEMINI_API_KEY in .env file`);
-        console.log(`   🔗 Get API key: https://makersuite.google.com/app/apikey`);
+        logger.warn(`🤖 AI Integration: ⚠️  Disabled (using fallback questions)`);
+        logger.warn(`   💡 To enable AI: Set GEMINI_API_KEY in .env file`);
+        logger.warn(`   🔗 Get API key: https://makersuite.google.com/app/apikey`);
     }
 });
 

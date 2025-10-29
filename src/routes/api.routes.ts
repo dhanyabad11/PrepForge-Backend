@@ -1,7 +1,14 @@
-import express from "express";
+import express, { Request, Response } from "express";
 import { AIService } from "../services/ai.service";
 import { feedbackService } from "../services/feedback.service";
 import { DatabaseService } from "../services/database.service";
+import { aiLimiter } from "../middleware/rateLimiter";
+import {
+    validateQuestionGeneration,
+    validateFeedbackGeneration,
+    validateUserId,
+} from "../middleware/validators";
+import logger from "../utils/logger";
 
 const router = express.Router();
 
@@ -23,7 +30,7 @@ const getDBService = () => {
 };
 
 // Generate interview questions
-router.post("/generate-questions", async (req, res) => {
+router.post("/generate-questions", aiLimiter, validateQuestionGeneration, async (req: Request, res: Response) => {
     try {
         const {
             jobRole,
@@ -34,6 +41,8 @@ router.post("/generate-questions", async (req, res) => {
             numberOfQuestions,
             questionType,
         } = req.body;
+
+        logger.info("Generating questions", { jobRole, company, userId, difficulty });
 
         if (!jobRole || !company || !userId) {
             return res.status(400).json({
@@ -89,7 +98,7 @@ router.post("/generate-questions", async (req, res) => {
             company,
         });
     } catch (error) {
-        console.error("Error in generate-questions:", error);
+        logger.error("Error in generate-questions:", error);
         res.status(500).json({
             error: "Failed to generate questions",
             message: error instanceof Error ? error.message : "Unknown error",
@@ -98,7 +107,7 @@ router.post("/generate-questions", async (req, res) => {
 });
 
 // Generate feedback for an answer and save it
-router.post("/generate-feedback", async (req, res) => {
+router.post("/generate-feedback", aiLimiter, validateFeedbackGeneration, async (req: Request, res: Response) => {
     try {
         const { question, answer, userId, interviewId, questionId, timeSpent } = req.body;
 
