@@ -6,11 +6,19 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
+import compression from "compression";
 import apiRoutes from "./routes/api.routes";
 import databaseRoutes from "./routes/database.routes";
 import { apiLimiter } from "./middleware/rateLimiter";
 import logger, { logStream } from "./utils/logger";
 import { healthCheck, livenessProbe, readinessProbe } from "./middleware/healthCheck";
+import {
+    requestIdMiddleware,
+    performanceLogger,
+    timeoutMiddleware,
+} from "./middleware/performance";
+import { apiVersion } from "./middleware/versioning";
+import { GracefulShutdown } from "./utils/gracefulShutdown";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -24,14 +32,20 @@ const allowedOrigins = [
     /https:\/\/prep-forge-frontend.*\.vercel\.app$/, // Allow all Vercel preview deployments
 ].filter(Boolean);
 
-// Security middleware
+// Security and performance middleware
 app.use(helmet({
     contentSecurityPolicy: false, // Disable CSP for API
     crossOriginEmbedderPolicy: false,
 }));
+app.use(compression()); // Response compression
+app.use(requestIdMiddleware); // Request ID tracking
+app.use(apiVersion); // API versioning
 
 // Request logging
 app.use(morgan("combined", { stream: logStream }));
+
+// Performance monitoring
+app.use(performanceLogger);
 
 // Rate limiting
 app.use("/api", apiLimiter);
@@ -69,24 +83,10 @@ app.use(
 );
 app.use(express.json());
 
-// Root endpoint - Welcome message
-app.get("/", (req, res) => {
-    res.json({
-        name: "PrepForge API",
-        version: "1.0.0",
-        status: "running",
-        message: "Welcome to PrepForge API! Visit /api/health for health check.",
-        endpoints: {
-            health: "/api/health",
-            generateQuestions: "/api/generate-questions",
-            generateFeedback: "/api/generate-feedback",
-            database: "/api/db/*",
-        },
-        documentation: "https://github.com/dhanyabad11/PrepForge-Backend",
-    });
-});
+// Timeout middleware (30 seconds for long-running AI requests)
+app.use(timeoutMiddleware(30000));
 
-// Root route
+// Root endpoint - Welcome message
 app.get("/", (req, res) => {
     res.json({
         name: "PrepForge API",
@@ -99,7 +99,15 @@ app.get("/", (req, res) => {
             generateFeedback: "/api/generate-feedback",
             database: "/api/db/*",
         },
-        documentation: "Visit https://github.com/dhanyabad11/PrepForge-Backend",
+        features: {
+            security: "helmet.js",
+            compression: "gzip",
+            rateLimit: "express-rate-limit",
+            monitoring: "winston + morgan",
+            requestTracking: "UUID",
+            gracefulShutdown: "enabled",
+        },
+        documentation: "https://github.com/dhanyabad11/PrepForge-Backend",
     });
 });
 
@@ -113,7 +121,9 @@ app.get("/health/live", livenessProbe);
 app.get("/health/ready", readinessProbe);
 
 // Legacy health check endpoint
-app.get("/api/health", healthCheck); // 404 handler
+app.get("/api/health", healthCheck);
+
+// 404 handler
 app.use((req, res, next) => {
     res.status(404).json({
         error: "Route not found",
@@ -137,10 +147,12 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 });
 
 // Start server
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
     logger.info(`🚀 PrepForge API server running on port ${PORT}`);
     logger.info(`📝 Health check: http://localhost:${PORT}/health`);
     logger.info(`🌐 Frontend URL: ${process.env.FRONTEND_URL}`);
+    logger.info(`🔒 Security: Helmet + CORS + Rate Limiting`);
+    logger.info(`⚡ Performance: Compression + Request Tracking`);
 
     if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== "your_api_key_here") {
         logger.info(`🤖 AI Integration: ✅ Enabled with Google Gemini`);
@@ -153,5 +165,8 @@ app.listen(PORT, () => {
         logger.warn(`   🔗 Get API key: https://makersuite.google.com/app/apikey`);
     }
 });
+
+// Initialize graceful shutdown
+new GracefulShutdown(server);
 
 export default app;
