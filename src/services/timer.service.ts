@@ -78,9 +78,7 @@ export class QuestionTimerService {
     /**
      * Get tips based on difficulty level
      */
-    private static getDifficultyTips(
-        difficulty: "easy" | "medium" | "hard"
-    ): string[] {
+    private static getDifficultyTips(difficulty: "easy" | "medium" | "hard"): string[] {
         const tips = {
             easy: [
                 "Keep your answer clear and concise",

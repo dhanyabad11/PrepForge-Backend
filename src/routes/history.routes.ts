@@ -103,10 +103,7 @@ router.get(
             }
 
             const days = parseInt(req.query.days as string) || 30;
-            const analytics = await HistoryService.getUserAnalytics(
-                parseInt(userId),
-                days
-            );
+            const analytics = await HistoryService.getUserAnalytics(parseInt(userId), days);
 
             res.json({
                 success: true,

@@ -7,11 +7,7 @@ export class HistoryService {
     /**
      * Get user's interview history with pagination
      */
-    static async getUserInterviewHistory(
-        userId: number,
-        page: number = 1,
-        limit: number = 10
-    ) {
+    static async getUserInterviewHistory(userId: number, page: number = 1, limit: number = 10) {
         try {
             const offset = (page - 1) * limit;
 
@@ -61,9 +57,7 @@ export class HistoryService {
             const [interview] = await db
                 .select()
                 .from(interviews)
-                .where(
-                    and(eq(interviews.id, interviewId), eq(interviews.userId, userId))
-                );
+                .where(and(eq(interviews.id, interviewId), eq(interviews.userId, userId)));
 
             if (!interview) {
                 throw new Error("Interview not found");
@@ -117,10 +111,7 @@ export class HistoryService {
                 })
                 .from(answers)
                 .where(
-                    and(
-                        eq(answers.userId, userId),
-                        sql`${answers.createdAt} >= ${dateThreshold}`
-                    )
+                    and(eq(answers.userId, userId), sql`${answers.createdAt} >= ${dateThreshold}`)
                 );
 
             // Get progress data
@@ -140,22 +131,17 @@ export class HistoryService {
                 },
                 overview: {
                     totalInterviews: recentInterviews.length,
-                    completedInterviews: recentInterviews.filter(
-                        (i) => i.status === "completed"
-                    ).length,
+                    completedInterviews: recentInterviews.filter((i) => i.status === "completed")
+                        .length,
                     totalQuestionsAnswered: Number(answerStats[0]?.totalAnswers || 0),
-                    averageScore: Number(answerStats[0]?.avgOverallScore || 0).toFixed(
-                        2
-                    ),
+                    averageScore: Number(answerStats[0]?.avgOverallScore || 0).toFixed(2),
                 },
                 scores: {
                     overall: Number(answerStats[0]?.avgOverallScore || 0).toFixed(2),
                     relevance: Number(answerStats[0]?.avgRelevanceScore || 0).toFixed(2),
                     clarity: Number(answerStats[0]?.avgClarityScore || 0).toFixed(2),
                     depth: Number(answerStats[0]?.avgDepthScore || 0).toFixed(2),
-                    communication: Number(
-                        answerStats[0]?.avgCommunicationScore || 0
-                    ).toFixed(2),
+                    communication: Number(answerStats[0]?.avgCommunicationScore || 0).toFixed(2),
                 },
                 skills: {
                     behavioral: progress?.behavioralSkill || 50,
@@ -199,10 +185,7 @@ export class HistoryService {
                 })
                 .from(answers)
                 .where(
-                    and(
-                        eq(answers.userId, userId),
-                        sql`${answers.createdAt} >= ${dateThreshold}`
-                    )
+                    and(eq(answers.userId, userId), sql`${answers.createdAt} >= ${dateThreshold}`)
                 )
                 .groupBy(sql`DATE_TRUNC('week', ${answers.createdAt})`)
                 .orderBy(sql`DATE_TRUNC('week', ${answers.createdAt})`);

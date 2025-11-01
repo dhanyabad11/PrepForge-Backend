@@ -1,4 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { CacheService } from "./cache.service";
+import logger from "../utils/logger";
 
 export interface Question {
     id: string;
@@ -30,6 +32,16 @@ export class AIService {
         numberOfQuestions: number = 5,
         questionType?: "behavioral" | "technical" | "situational" | "all"
     ): Promise<Question[]> {
+        // Create cache key based on parameters
+        const cacheKey = `questions:${jobRole}:${company}:${experience}:${difficulty}:${numberOfQuestions}:${questionType || "all"}`;
+
+        // Try to get from cache first
+        const cached = CacheService.get<Question[]>(cacheKey);
+        if (cached) {
+            logger.info("Returning cached questions", { cacheKey });
+            return cached;
+        }
+
         try {
             const difficultyGuidelines = {
                 easy: "Focus on basic concepts, general questions, and foundational knowledge. Suitable for entry-level or warm-up questions.",
@@ -91,7 +103,13 @@ export class AIService {
                     filteredQuestions = parsedQuestions.filter((q) => q.type === questionType);
                 }
 
-                return filteredQuestions.slice(0, numberOfQuestions);
+                const finalQuestions = filteredQuestions.slice(0, numberOfQuestions);
+
+                // Cache the result for 1 hour (3600000ms)
+                CacheService.set(cacheKey, finalQuestions, 3600000);
+                logger.info("Questions cached", { cacheKey });
+
+                return finalQuestions;
             } catch {
                 // Fallback if AI doesn't return valid JSON
                 return this.getFallbackQuestions(
@@ -108,6 +126,16 @@ export class AIService {
     }
 
     async generateFeedback(question: string, answer: string): Promise<string> {
+        // Create cache key for feedback
+        const cacheKey = `feedback:${question.substring(0, 50)}:${answer.substring(0, 50)}`;
+
+        // Try to get from cache
+        const cached = CacheService.get<string>(cacheKey);
+        if (cached) {
+            logger.info("Returning cached feedback", { cacheKey });
+            return cached;
+        }
+
         try {
             const prompt = `Provide constructive feedback for this interview answer:
       
@@ -123,7 +151,13 @@ export class AIService {
 
             const result = await this.model.generateContent(prompt);
             const response = await result.response;
-            return response.text();
+            const feedback = response.text();
+
+            // Cache feedback for 30 minutes
+            CacheService.set(cacheKey, feedback, 1800000);
+            logger.info("Feedback cached", { cacheKey });
+
+            return feedback;
         } catch (error) {
             console.error("Feedback generation error:", error);
             return "Thank you for your response. Consider providing more specific examples and quantifiable results in your answer.";

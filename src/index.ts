@@ -10,6 +10,7 @@ import compression from "compression";
 import apiRoutes from "./routes/api.routes";
 import databaseRoutes from "./routes/database.routes";
 import historyRoutes from "./routes/history.routes";
+import bookmarkRoutes from "./routes/bookmark.routes";
 import { apiLimiter } from "./middleware/rateLimiter";
 import logger, { logStream } from "./utils/logger";
 import { healthCheck, livenessProbe, readinessProbe } from "./middleware/healthCheck";
@@ -118,6 +119,7 @@ app.get("/", (req, res) => {
 app.use("/api", apiRoutes);
 app.use("/api/db", databaseRoutes);
 app.use("/api/history", historyRoutes);
+app.use("/api/bookmarks", bookmarkRoutes);
 
 // Health check endpoints
 app.get("/health", healthCheck);
