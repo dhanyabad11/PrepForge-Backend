@@ -41,9 +41,7 @@ export class BookmarkService {
         try {
             const deleted = await db
                 .delete(savedQuestionSets)
-                .where(
-                    and(eq(savedQuestionSets.id, setId), eq(savedQuestionSets.userId, userId))
-                )
+                .where(and(eq(savedQuestionSets.id, setId), eq(savedQuestionSets.userId, userId)))
                 .returning();
 
             if (deleted.length === 0) {

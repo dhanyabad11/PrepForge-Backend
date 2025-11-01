@@ -31,7 +31,9 @@ const allowedOrigins = [
     "http://localhost:3002",
     process.env.FRONTEND_URL,
     "https://prep-forge-frontend.vercel.app",
+    "https://prep-forge-web.vercel.app",
     /https:\/\/prep-forge-frontend.*\.vercel\.app$/, // Allow all Vercel preview deployments
+    /https:\/\/prep-forge-web.*\.vercel\.app$/, // New repo name
 ].filter(Boolean);
 
 // Security and performance middleware
@@ -75,14 +77,16 @@ app.use(
             }
         },
         credentials: true,
-        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
         allowedHeaders: [
             "Content-Type",
             "Authorization",
             "x-user-email",
             "x-user-name",
             "x-user-image",
+            "X-Request-ID",
         ],
+        exposedHeaders: ["X-Request-ID", "X-API-Version"],
     })
 );
 app.use(express.json());

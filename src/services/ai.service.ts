@@ -33,7 +33,9 @@ export class AIService {
         questionType?: "behavioral" | "technical" | "situational" | "all"
     ): Promise<Question[]> {
         // Create cache key based on parameters
-        const cacheKey = `questions:${jobRole}:${company}:${experience}:${difficulty}:${numberOfQuestions}:${questionType || "all"}`;
+        const cacheKey = `questions:${jobRole}:${company}:${experience}:${difficulty}:${numberOfQuestions}:${
+            questionType || "all"
+        }`;
 
         // Try to get from cache first
         const cached = CacheService.get<Question[]>(cacheKey);
