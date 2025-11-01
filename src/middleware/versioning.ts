@@ -13,11 +13,11 @@ export const deprecationNotice = (message: string, sunsetDate?: string) => {
     return (req: Request, res: Response, next: NextFunction) => {
         res.setHeader("Deprecation", "true");
         res.setHeader("X-Deprecation-Notice", message);
-        
+
         if (sunsetDate) {
             res.setHeader("Sunset", sunsetDate);
         }
-        
+
         next();
     };
 };

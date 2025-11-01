@@ -30,133 +30,144 @@ const getDBService = () => {
 };
 
 // Generate interview questions
-router.post("/generate-questions", aiLimiter, validateQuestionGeneration, async (req: Request, res: Response) => {
-    try {
-        const {
-            jobRole,
-            company,
-            experience,
-            userId,
-            difficulty,
-            numberOfQuestions,
-            questionType,
-        } = req.body;
-
-        logger.info("Generating questions", { jobRole, company, userId, difficulty });
-
-        if (!jobRole || !company || !userId) {
-            return res.status(400).json({
-                error: "Job role, company, and user ID are required",
-            });
-        }
-
-        const validDifficulty =
-            difficulty === "easy" || difficulty === "medium" || difficulty === "hard"
-                ? difficulty
-                : "medium";
-
-        const validNumberOfQuestions =
-            numberOfQuestions && [5, 10, 15, 20].includes(numberOfQuestions)
-                ? numberOfQuestions
-                : 5;
-
-        const validQuestionType =
-            questionType && ["behavioral", "technical", "situational", "all"].includes(questionType)
-                ? questionType
-                : "all";
-
-        const questions = await getAIService().generateQuestions(
-            jobRole,
-            company,
-            experience || "mid-level",
-            validDifficulty,
-            validNumberOfQuestions,
-            validQuestionType
-        );
-
-        // Try to create a new interview session in the database
-        let interviewId: string | number = `temp-${Date.now()}`;
+router.post(
+    "/generate-questions",
+    aiLimiter,
+    validateQuestionGeneration,
+    async (req: Request, res: Response) => {
         try {
-            const interview = await getDBService().createInterview(
+            const {
+                jobRole,
+                company,
+                experience,
                 userId,
+                difficulty,
+                numberOfQuestions,
+                questionType,
+            } = req.body;
+
+            logger.info("Generating questions", { jobRole, company, userId, difficulty });
+
+            if (!jobRole || !company || !userId) {
+                return res.status(400).json({
+                    error: "Job role, company, and user ID are required",
+                });
+            }
+
+            const validDifficulty =
+                difficulty === "easy" || difficulty === "medium" || difficulty === "hard"
+                    ? difficulty
+                    : "medium";
+
+            const validNumberOfQuestions =
+                numberOfQuestions && [5, 10, 15, 20].includes(numberOfQuestions)
+                    ? numberOfQuestions
+                    : 5;
+
+            const validQuestionType =
+                questionType &&
+                ["behavioral", "technical", "situational", "all"].includes(questionType)
+                    ? questionType
+                    : "all";
+
+            const questions = await getAIService().generateQuestions(
                 jobRole,
                 company,
                 experience || "mid-level",
-                questions
+                validDifficulty,
+                validNumberOfQuestions,
+                validQuestionType
             );
-            interviewId = interview.id;
-        } catch (dbError) {
-            console.error("Database error (non-fatal):", dbError);
-            // Continue without database - use temporary ID
-        }
 
-        res.json({
-            success: true,
-            questions,
-            interviewId,
-            jobRole,
-            company,
-        });
-    } catch (error) {
-        logger.error("Error in generate-questions:", error);
-        res.status(500).json({
-            error: "Failed to generate questions",
-            message: error instanceof Error ? error.message : "Unknown error",
-        });
-    }
-});
+            // Try to create a new interview session in the database
+            let interviewId: string | number = `temp-${Date.now()}`;
+            try {
+                const interview = await getDBService().createInterview(
+                    userId,
+                    jobRole,
+                    company,
+                    experience || "mid-level",
+                    questions
+                );
+                interviewId = interview.id;
+            } catch (dbError) {
+                console.error("Database error (non-fatal):", dbError);
+                // Continue without database - use temporary ID
+            }
 
-// Generate feedback for an answer and save it
-router.post("/generate-feedback", aiLimiter, validateFeedbackGeneration, async (req: Request, res: Response) => {
-    try {
-        const { question, answer, userId, interviewId, questionId, timeSpent } = req.body;
-
-        if (!question || !answer || !userId || !interviewId || !questionId) {
-            return res.status(400).json({
-                error: "Question, answer, userId, interviewId, and questionId are required",
+            res.json({
+                success: true,
+                questions,
+                interviewId,
+                jobRole,
+                company,
+            });
+        } catch (error) {
+            logger.error("Error in generate-questions:", error);
+            res.status(500).json({
+                error: "Failed to generate questions",
+                message: error instanceof Error ? error.message : "Unknown error",
             });
         }
-
-        // 1. Get feedback from AI
-        const feedback = await feedbackService.generateFeedback(question, answer);
-
-        // 2. Calculate overall score
-        const overallScore =
-            (feedback.relevanceScore +
-                feedback.clarityScore +
-                feedback.depthScore +
-                feedback.starMethodScore) /
-            4;
-
-        // 3. Save the answer and feedback to the database
-        const savedAnswer = await getDBService().saveAnswer({
-            userId,
-            interviewId,
-            questionId,
-            question,
-            answer,
-            relevanceScore: feedback.relevanceScore,
-            clarityScore: feedback.clarityScore,
-            depthScore: feedback.depthScore,
-            overallScore: overallScore,
-            strengths: feedback.overallFeedback ? [feedback.overallFeedback] : [],
-            improvements: feedback.suggestion ? [feedback.suggestion] : [],
-            starMethodScore: { overall: feedback.starMethodScore },
-            timeSpent,
-        });
-
-        res.json({
-            success: true,
-            feedback: savedAnswer,
-        });
-    } catch (error) {
-        console.error("Error in generate-feedback:", error);
-        res.status(500).json({
-            error: "Failed to generate and save feedback",
-            message: error instanceof Error ? error.message : "Unknown error",
-        });
     }
-});
+);
+
+// Generate feedback for an answer and save it
+router.post(
+    "/generate-feedback",
+    aiLimiter,
+    validateFeedbackGeneration,
+    async (req: Request, res: Response) => {
+        try {
+            const { question, answer, userId, interviewId, questionId, timeSpent } = req.body;
+
+            if (!question || !answer || !userId || !interviewId || !questionId) {
+                return res.status(400).json({
+                    error: "Question, answer, userId, interviewId, and questionId are required",
+                });
+            }
+
+            // 1. Get feedback from AI
+            const feedback = await feedbackService.generateFeedback(question, answer);
+
+            // 2. Calculate overall score
+            const overallScore =
+                (feedback.relevanceScore +
+                    feedback.clarityScore +
+                    feedback.depthScore +
+                    feedback.starMethodScore) /
+                4;
+
+            // 3. Save the answer and feedback to the database
+            const savedAnswer = await getDBService().saveAnswer({
+                userId,
+                interviewId,
+                questionId,
+                question,
+                answer,
+                relevanceScore: feedback.relevanceScore,
+                clarityScore: feedback.clarityScore,
+                depthScore: feedback.depthScore,
+                overallScore: overallScore,
+                strengths: feedback.overallFeedback ? [feedback.overallFeedback] : [],
+                improvements: feedback.suggestion ? [feedback.suggestion] : [],
+                starMethodScore: { overall: feedback.starMethodScore },
+                timeSpent,
+            });
+
+            res.json({
+                success: true,
+                feedback: savedAnswer,
+            });
+        } catch (error) {
+            console.error("Error in generate-feedback:", error);
+            res.status(500).json({
+                error: "Failed to generate and save feedback",
+                message: error instanceof Error ? error.message : "Unknown error",
+            });
+        }
+    }
+);
 
 // Get user statistics
 router.get("/user-stats/:userId", async (req, res) => {

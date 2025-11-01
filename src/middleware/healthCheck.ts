@@ -130,7 +130,8 @@ export async function healthCheck(req: Request, res: Response) {
         };
 
         // Set appropriate status code
-        const statusCode = overallStatus === "healthy" ? 200 : overallStatus === "degraded" ? 200 : 503;
+        const statusCode =
+            overallStatus === "healthy" ? 200 : overallStatus === "degraded" ? 200 : 503;
 
         res.status(statusCode).json(metrics);
     } catch (error) {

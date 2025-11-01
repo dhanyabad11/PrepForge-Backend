@@ -14,10 +14,10 @@ declare global {
 export const requestIdMiddleware = (req: Request, res: Response, next: NextFunction) => {
     req.id = uuidv4();
     req.startTime = Date.now();
-    
+
     // Add request ID to response headers
     res.setHeader("X-Request-ID", req.id);
-    
+
     next();
 };
 
@@ -29,7 +29,7 @@ export const performanceLogger = (req: Request, res: Response, next: NextFunctio
     // Override end function to log performance
     res.end = function (this: Response, ...args: any[]) {
         const duration = Date.now() - req.startTime;
-        
+
         // Log request completion
         console.log({
             requestId: req.id,

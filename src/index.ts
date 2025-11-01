@@ -9,6 +9,7 @@ import morgan from "morgan";
 import compression from "compression";
 import apiRoutes from "./routes/api.routes";
 import databaseRoutes from "./routes/database.routes";
+import historyRoutes from "./routes/history.routes";
 import { apiLimiter } from "./middleware/rateLimiter";
 import logger, { logStream } from "./utils/logger";
 import { healthCheck, livenessProbe, readinessProbe } from "./middleware/healthCheck";
@@ -33,10 +34,12 @@ const allowedOrigins = [
 ].filter(Boolean);
 
 // Security and performance middleware
-app.use(helmet({
-    contentSecurityPolicy: false, // Disable CSP for API
-    crossOriginEmbedderPolicy: false,
-}));
+app.use(
+    helmet({
+        contentSecurityPolicy: false, // Disable CSP for API
+        crossOriginEmbedderPolicy: false,
+    })
+);
 app.use(compression()); // Response compression
 app.use(requestIdMiddleware); // Request ID tracking
 app.use(apiVersion); // API versioning
@@ -114,6 +117,7 @@ app.get("/", (req, res) => {
 // Routes
 app.use("/api", apiRoutes);
 app.use("/api/db", databaseRoutes);
+app.use("/api/history", historyRoutes);
 
 // Health check endpoints
 app.get("/health", healthCheck);
@@ -139,7 +143,7 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
         url: req.url,
         method: req.method,
     });
-    
+
     res.status(err.status || 500).json({
         error: "Internal server error",
         message: process.env.NODE_ENV === "development" ? err.message : "Something went wrong",
