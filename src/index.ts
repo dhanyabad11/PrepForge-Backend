@@ -25,6 +25,23 @@ import { GracefulShutdown } from "./utils/gracefulShutdown";
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+console.log("[STARTUP] Express app created");
+console.log("[STARTUP] PORT:", PORT);
+
+// Test route BEFORE any middleware
+app.get("/test", (req, res) => {
+    console.log("[TEST] /test endpoint hit!");
+    res.json({ status: "test works!" });
+});
+
+// Debug: Log all incoming requests before any middleware
+app.use((req, res, next) => {
+    console.log(`[DEBUG] ${new Date().toISOString()} - ${req.method} ${req.url} from ${req.ip}`);
+    next();
+});
+
+console.log("[STARTUP] Debug middleware registered");
+
 // CORS configuration for production (Vercel frontend)
 const allowedOrigins = [
     "http://localhost:3000",
@@ -37,12 +54,13 @@ const allowedOrigins = [
 ].filter(Boolean);
 
 // Security and performance middleware
-app.use(
-    helmet({
-        contentSecurityPolicy: false, // Disable CSP for API
-        crossOriginEmbedderPolicy: false,
-    })
-);
+// TEMPORARILY DISABLED helmet to debug
+// app.use(
+//     helmet({
+//         contentSecurityPolicy: false, // Disable CSP for API
+//         crossOriginEmbedderPolicy: false,
+//     })
+// );
 app.use(compression()); // Response compression
 app.use(requestIdMiddleware); // Request ID tracking
 app.use(apiVersion); // API versioning
@@ -176,7 +194,7 @@ const server = app.listen(PORT, () => {
     }
 });
 
-// Initialize graceful shutdown
-new GracefulShutdown(server);
+// Disable graceful shutdown for now - causing issues
+// new GracefulShutdown(server);
 
 export default app;

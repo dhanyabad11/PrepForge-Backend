@@ -35,28 +35,25 @@ export class GracefulShutdown {
         this.isShuttingDown = true;
         logger.info(`Received ${signal}, starting graceful shutdown...`);
 
-        // Stop accepting new connections
-        this.server.close(() => {
-            logger.info("HTTP server closed");
-        });
-
         // Set timeout for force shutdown
         const forceShutdownTimeout = setTimeout(() => {
             logger.error("Could not close connections in time, forcefully shutting down");
             process.exit(1);
-        }, 30000); // 30 seconds
+        }, 5000); // Reduced to 5 seconds
 
-        try {
-            // Wait for ongoing requests to finish
-            await this.waitForConnections();
-
+        // Stop accepting new connections
+        this.server.close(() => {
+            logger.info("HTTP server closed");
             clearTimeout(forceShutdownTimeout);
             logger.info("Graceful shutdown completed");
             process.exit(0);
-        } catch (error) {
-            logger.error("Error during shutdown:", error);
-            process.exit(1);
-        }
+        });
+
+        // Force close after timeout
+        setTimeout(() => {
+            logger.warn("Force closing server after timeout");
+            process.exit(0);
+        }, 3000);
     }
 
     private waitForConnections(): Promise<void> {
