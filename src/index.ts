@@ -37,12 +37,13 @@ const allowedOrigins = [
 ].filter(Boolean);
 
 // Security and performance middleware
-app.use(
-    helmet({
-        contentSecurityPolicy: false, // Disable CSP for API
-        crossOriginEmbedderPolicy: false,
-    })
-);
+// Helmet disabled for Render compatibility
+// app.use(
+//     helmet({
+//         contentSecurityPolicy: false, // Disable CSP for API
+//         crossOriginEmbedderPolicy: false,
+//     })
+// );
 app.use(compression()); // Response compression
 app.use(requestIdMiddleware); // Request ID tracking
 app.use(apiVersion); // API versioning
@@ -56,39 +57,21 @@ app.use(performanceLogger);
 // Rate limiting
 app.use("/api", apiLimiter);
 
-app.use(
-    cors({
-        origin: (origin, callback) => {
-            // Allow requests with no origin (mobile apps, Postman, etc.)
-            if (!origin) return callback(null, true);
-
-            // Check if origin is in allowed list or matches regex
-            const isAllowed = allowedOrigins.some((allowed) => {
-                if (typeof allowed === "string") return allowed === origin;
-                if (allowed instanceof RegExp) return allowed.test(origin);
-                return false;
-            });
-
-            if (isAllowed) {
-                callback(null, true);
-            } else {
-                console.log("CORS blocked origin:", origin);
-                callback(new Error("Not allowed by CORS"));
-            }
-        },
-        credentials: true,
-        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-        allowedHeaders: [
-            "Content-Type",
-            "Authorization",
-            "x-user-email",
-            "x-user-name",
-            "x-user-image",
-            "X-Request-ID",
-        ],
-        exposedHeaders: ["X-Request-ID", "X-API-Version"],
-    })
-);
+// CORS - Allow all origins for now to test Render
+app.use(cors({
+    origin: true,
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allowedHeaders: [
+        "Content-Type",
+        "Authorization",
+        "x-user-email",
+        "x-user-name",
+        "x-user-image",
+        "X-Request-ID",
+    ],
+    exposedHeaders: ["X-Request-ID", "X-API-Version"],
+}));
 app.use(express.json());
 
 // Timeout middleware (30 seconds for long-running AI requests)
