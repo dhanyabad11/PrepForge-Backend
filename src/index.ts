@@ -23,7 +23,7 @@ import { apiVersion } from "./middleware/versioning";
 import { GracefulShutdown } from "./utils/gracefulShutdown";
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = parseInt(process.env.PORT || '5000', 10);
 
 // CORS configuration for production (Vercel frontend)
 const allowedOrigins = [
@@ -157,7 +157,7 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 });
 
 // Start server
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
     logger.info(`🚀 PrepForge API server running on port ${PORT}`);
     logger.info(`📝 Health check: http://localhost:${PORT}/health`);
     logger.info(`🌐 Frontend URL: ${process.env.FRONTEND_URL}`);
