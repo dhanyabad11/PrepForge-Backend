@@ -25,6 +25,11 @@ import { GracefulShutdown } from "./utils/gracefulShutdown";
 const app = express();
 const PORT = parseInt(process.env.PORT || "5000", 10);
 
+// Simple health check BEFORE any middleware for Render
+app.get("/health", (req, res) => {
+    res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
 // CORS configuration for production (Vercel frontend)
 const allowedOrigins = [
     "http://localhost:3000",
@@ -58,24 +63,26 @@ app.use(performanceLogger);
 app.use("/api", apiLimiter);
 
 // CORS - Allow all origins for now to test Render
-app.use(cors({
-    origin: true,
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allowedHeaders: [
-        "Content-Type",
-        "Authorization",
-        "x-user-email",
-        "x-user-name",
-        "x-user-image",
-        "X-Request-ID",
-    ],
-    exposedHeaders: ["X-Request-ID", "X-API-Version"],
-}));
+app.use(
+    cors({
+        origin: true,
+        credentials: true,
+        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+        allowedHeaders: [
+            "Content-Type",
+            "Authorization",
+            "x-user-email",
+            "x-user-name",
+            "x-user-image",
+            "X-Request-ID",
+        ],
+        exposedHeaders: ["X-Request-ID", "X-API-Version"],
+    })
+);
 app.use(express.json());
 
-// Timeout middleware (30 seconds for long-running AI requests)
-app.use(timeoutMiddleware(30000));
+// Timeout middleware disabled for Render
+// app.use(timeoutMiddleware(30000));
 
 // Root endpoint - Welcome message
 app.get("/", (req, res) => {
@@ -140,7 +147,7 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 });
 
 // Start server - Listen on all network interfaces for Render
-const HOST = '0.0.0.0';
+const HOST = "0.0.0.0";
 const server = app.listen(PORT, HOST, () => {
     logger.info(`🚀 PrepForge API server running on ${HOST}:${PORT}`);
     logger.info(`📝 Health check: http://localhost:${PORT}/health`);
