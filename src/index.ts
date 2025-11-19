@@ -156,9 +156,10 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
     });
 });
 
-// Start server
-const server = app.listen(PORT, "0.0.0.0", () => {
-    logger.info(`🚀 PrepForge API server running on port ${PORT}`);
+// Start server - Listen on all network interfaces for Render
+const HOST = '0.0.0.0';
+const server = app.listen(PORT, HOST, () => {
+    logger.info(`🚀 PrepForge API server running on ${HOST}:${PORT}`);
     logger.info(`📝 Health check: http://localhost:${PORT}/health`);
     logger.info(`🌐 Frontend URL: ${process.env.FRONTEND_URL}`);
     logger.info(`🔒 Security: Helmet + CORS + Rate Limiting`);
