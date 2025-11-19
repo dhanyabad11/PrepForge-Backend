@@ -176,9 +176,7 @@ const server = app.listen(PORT, "0.0.0.0", () => {
     }
 });
 
-// Initialize graceful shutdown only in development
-if (process.env.NODE_ENV !== 'production') {
-    new GracefulShutdown(server);
-}
+// Graceful shutdown disabled for Render compatibility
+// new GracefulShutdown(server);
 
 export default app;
