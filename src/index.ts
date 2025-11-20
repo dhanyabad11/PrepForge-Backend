@@ -25,10 +25,9 @@ import { GracefulShutdown } from "./utils/gracefulShutdown";
 const app = express();
 const PORT = parseInt(process.env.PORT || "5000", 10);
 
-// Simple health check BEFORE any middleware for Render
-app.get("/health", (req, res) => {
-    res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
-});
+
+
+// Simple health check removed to use the detailed middleware below
 
 // CORS configuration for production (Vercel frontend)
 const allowedOrigins = [
@@ -51,7 +50,7 @@ const allowedOrigins = [
 // );
 app.use(compression()); // Response compression
 app.use(requestIdMiddleware); // Request ID tracking
-app.use(apiVersion); // API versioning
+app.use(apiVersion("1.0.0")); // API versioning
 
 // Request logging
 app.use(morgan("combined", { stream: logStream }));

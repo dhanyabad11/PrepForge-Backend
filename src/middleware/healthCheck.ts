@@ -42,7 +42,16 @@ async function checkDatabaseHealth(): Promise<{
 }> {
     const startTime = Date.now();
     try {
-        await db.execute("SELECT 1");
+        // Add a timeout to the database check to prevent hanging
+        const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("Database check timed out")), 1000)
+        );
+
+        await Promise.race([
+            db.execute("SELECT 1"),
+            timeoutPromise
+        ]);
+
         return {
             status: "up",
             responseTime: Date.now() - startTime,
