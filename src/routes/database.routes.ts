@@ -414,4 +414,39 @@ router.post("/auth/user", async (req, res) => {
     }
 });
 
+// Get user by email (used by Dashboard to get userId from session email)
+router.get("/users/by-email/:email", async (req, res) => {
+    try {
+        const { email } = req.params;
+
+        if (!email) {
+            return res.status(400).json({
+                error: "Email is required",
+            });
+        }
+
+        const user = await getDBService().getUserByEmail(email);
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                error: "User not found",
+                message: "No user found with this email address",
+            });
+        }
+
+        res.json({
+            success: true,
+            user,
+        });
+    } catch (error) {
+        console.error("Error fetching user by email:", error);
+        res.status(500).json({
+            success: false,
+            error: "Failed to fetch user",
+            message: error instanceof Error ? error.message : "Unknown error",
+        });
+    }
+});
+
 export default router;

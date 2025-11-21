@@ -21,6 +21,7 @@ import {
 } from "./middleware/performance";
 import { apiVersion } from "./middleware/versioning";
 import { GracefulShutdown } from "./utils/gracefulShutdown";
+import { DatabaseService } from "./services/database.service";
 
 const app = express();
 const PORT = parseInt(process.env.PORT || "5000", 10);
@@ -108,11 +109,50 @@ app.get("/", (req, res) => {
     });
 });
 
+
 // Routes
 app.use("/api", apiRoutes);
 app.use("/api/db", databaseRoutes);
 app.use("/api/history", historyRoutes);
 app.use("/api/bookmarks", bookmarkRoutes);
+
+// Dashboard routes (public endpoints that don't require auth headers)
+const dbService = new DatabaseService();
+
+app.get("/api/user-stats/:userId", async (req, res) => {
+    try {
+        const userId = parseInt(req.params.userId);
+        if (isNaN(userId)) {
+            return res.status(400).json({ error: "Invalid user ID" });
+        }
+        const stats = await dbService.getUserStats(userId);
+        res.json({ success: true, stats });
+    } catch (error) {
+        console.error("Error fetching user stats:", error);
+        res.status(500).json({
+            error: "Failed to fetch user stats",
+            message: error instanceof Error ? error.message : "Unknown error"
+        });
+    }
+});
+
+app.get("/api/interview-history/:userId", async (req, res) => {
+    try {
+        const userId = parseInt(req.params.userId);
+        if (isNaN(userId)) {
+            return res.status(400).json({ error: "Invalid user ID" });
+        }
+        const interviews = await dbService.getUserInterviews(userId);
+        res.json({ success: true, interviews });
+    } catch (error) {
+        console.error("Error fetching interview history:", error);
+        res.status(500).json({
+            error: "Failed to fetch interview history",
+            message: error instanceof Error ? error.message : "Unknown error"
+        });
+    }
+});
+
 
 // Health check endpoints
 app.get("/health", healthCheck);
